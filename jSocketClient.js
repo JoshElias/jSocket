@@ -8,6 +8,7 @@ var mevents = require("events");
 var mjSocket = require("./jSocket");
 
 
+
 /*
 options : {
 	moduleID: {string} ID of the module this client represents
@@ -41,11 +42,8 @@ var JSocketClient = function( options ) {
 // Inherit from EventEmitter
 mutil.inherits(JSocketClient, mevents.EventEmitter);
 
-// Set static properties
-//JSocketClient.maxReconnects = 5;
 
-
-
+// Every JSocketClient has a socket it uses to transfer data to the server
 JSocketClient.prototype.connectSocket = function() {
 
 	var socket = new mnet.Socket({
@@ -61,6 +59,7 @@ JSocketClient.prototype.connectSocket = function() {
 	this.socketListener( jSocket );
 }
 
+// Listens to all the events emitted by the socket and responds accordingly
 JSocketClient.prototype.socketListener = function( jSocket ) {
 	var JSocketClient = this;
 
@@ -68,13 +67,8 @@ JSocketClient.prototype.socketListener = function( jSocket ) {
 		JSocketClient.emit("connect");
 	});
 
-	jSocket.on("heartbeat", function() {
-		console.log("Client received heartbeat")
-		JSocketClient.echoHeartbeat( jSocket );
-	});
-
 	jSocket.on("data", function(data) {
-		JSocketClient.emit("data");
+		JSocketClient.onData(jSocket, data);
 	});
 
 	jSocket.on("end", function() {
@@ -86,7 +80,6 @@ JSocketClient.prototype.socketListener = function( jSocket ) {
 	});
 	
 	jSocket.on("error", function(err) {
-		console.log("Socket closed due to error: ", err);
 		JSocketClient.attemptReconnect();
 		JSocketClient.emit("error", err);
 	});
@@ -97,22 +90,38 @@ JSocketClient.prototype.socketListener = function( jSocket ) {
 
 }
 
-JSocketClient.prototype.write = function( data ) {
-	this.socket.write( data );
+// When data is reading to be read from the JSocket, we determine if 
+// it has data that needs to be worked with or if it's just a heartbeat
+JSocketClient.prototype.onData = function( jSocket, data ) {
+	if( typeof(data.data) != "undefined" ) {
+		this.emit("data", data)
+	} else {
+		JSocketClient.echoHeartbeat( jSocket );
+		this.emit("heartbeat", data);
+	}
 }
 
+// When we receive an echo from the server we respond with our moduleID 
+// to let it know that we are still connected
 JSocketClient.prototype.echoHeartbeat = function( jSocket ) {
 	var echo = { moduleID: this.moduleID };
 	jSocket.write( echo );
 }
 
+// If our underlying socket is closed due to an error, we attempt
+// to reconnect it once after waiting 1 second
 JSocketClient.prototype.attemptReconnect = function() {
-	console.log("Attemping Reconnect...");
 	var attempts = 0;
 	setTimeout( function() {
 		this.socket.close();
 		this.socket.connect(this.targetPort);
 	}, 1000);
+}
+
+// Expose certain functionality of our underlying socket
+
+JSocketClient.prototype.write = function( data ) {
+	this.socket.write( data );
 }
 
 JSocketClient.prototype.destroy = function() {

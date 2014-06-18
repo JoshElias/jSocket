@@ -5,7 +5,12 @@
 var mutil = require("util");
 var mevents = require("events");
 
-
+/*
+JSocket is wrapper for a raw net socket in node.js. It's responsible for aggregating 
+all the data streamed to it into a complete data object that can be acted on.
+It packages your messages between "<<<" and ">>>" which helps it determine when your message begins and ends.
+This is so when this class emits a "data" event, you know it's the full message from the sender and not a piece.
+*/
 var JSocket = function( socket, id ) {
 	// Hook up Event Emitter Functionality
 	mevents.EventEmitter.call(this);
@@ -21,12 +26,14 @@ var JSocket = function( socket, id ) {
 	this.dataString = "";
 }
 
-// Inherit from EventEmitter
+// Inherit from EventEmitter to be able to emit messages
 mutil.inherits(JSocket, mevents.EventEmitter);
 
+// This regex we use to find full messages in the stringified data array we collect from the raw net socket
 JSocket.packageRegEx = /<<<(.*?)>>>/g;
 
-
+// Listens to the raw net socket's events, acts on it and emits it's own event for 
+// the user to act on as well
 JSocket.prototype.socketListener = function( socket ) {
 	var jsocket = this;
 	socket.on("connect", function() {
@@ -54,6 +61,11 @@ JSocket.prototype.socketListener = function( socket ) {
 	});
 };
 
+// Everytime we get a data event from the raw net socket we call this function.
+// We push the data buffer to our dataArray and stringify what we have collected so far.
+// We regex that string to see if we have any completed messages. For every completed message
+// we parse it into a JSON object and emit our own data event with that object.
+// We then flush the data array and string so we can start collecting data again for the next messages.
 JSocket.prototype.collectData = function( data ) {
 	this.dataArray.push(data)
 	var buffer = Buffer.concat(this.dataArray);
@@ -63,17 +75,8 @@ JSocket.prototype.collectData = function( data ) {
 	if( dataMatches !== null && dataMatches.length > 0) {
 		var i = 0;
 		for( i; i < dataMatches.length; i++) {
-
 			var parsedData = this.unpackageData( dataMatches[i] );
-
-			// If the parsed data had some data then emit the data event,
-			// else it's just a heartbeat
-			if( typeof(parsedData.data) != "undefined" ) {
-				this.emit("data", parsedData)
-			} else {
-				this.emit("heartbeat", parsedData);
-			}
-
+			this.emit("data", parsedData);
 		}
 		
 		// Flush the jsocket in preparation for the next stream
@@ -81,18 +84,24 @@ JSocket.prototype.collectData = function( data ) {
 	}		
 }
 
+// This is where we set the delimiters for our data.
 JSocket.prototype.packageData = function( data ) {
 	return "<<<"+JSON.stringify(data)+">>>";
 }
 
+// Unpackage the data by shaving off the first and last 3 characters. 
+// These will be the "<<<" and ">>>"
 JSocket.prototype.unpackageData = function( data ) {
 	return JSON.parse( data.substring(3, data.length-3) );
 }
 
+// Clean the data we use to collect the messages from the raw net socket
 JSocket.prototype.flushData = function() {
 	this.dataArray = [];
 	this.dataString = "";
 }
+
+// Expose certain functionality of our underlying raw net socket
 
 JSocket.prototype.connect = function( options ) {
 	this.socket.connect( options );

@@ -82,10 +82,6 @@ JSocketServer.prototype.handleSocket = function( socket, callback ) {
 	var jSocketServer = this;
 	var jSocket = this.createSocket( socket );
 
-	jSocket.on("heartbeat", function( data ) {
-		jSocketServer.mapSocket(jSocket, data.moduleID);
-	});
-
 	jSocket.on("data", function( data ) {
 		jSocketServer.mapSocket(jSocket, data.moduleID);
 	});
