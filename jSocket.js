@@ -2,6 +2,7 @@
  *	JSOCKET MODULE
  */
 
+var mnet = require("net");
 var mutil = require("util");
 var mevents = require("events");
 
@@ -10,10 +11,23 @@ JSocket is wrapper for a raw net socket in node.js. It's responsible for aggrega
 all the data streamed to it into a complete data object that can be acted on.
 It packages your messages between "<<<" and ">>>" which helps it determine when your message begins and ends.
 This is so when this class emits a "data" event, you know it's the full message from the sender and not a piece.
+
+socket: {object} This is the raw net socket we are wrapping, if omitted we'll create one ourselves.
+id: {string} This is the id we wish to assign to this socket
 */
 var JSocket = function( socket, id ) {
+
 	// Hook up Event Emitter Functionality
 	mevents.EventEmitter.call(this);
+
+	// Check for passed socket
+	if( typeof(socket) == "undefined" ) {
+		socket = new mnet.Socket({
+			allowHalfOpen: true,
+			readable: true,
+			writable: true
+		});
+	}
 
 	// Hook up raw socket
 	this.socket = socket;

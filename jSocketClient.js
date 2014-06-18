@@ -10,6 +10,10 @@ var mjSocket = require("./jSocket");
 
 
 /*
+This class was designed to easily set up a relation between two sockets, Server and Client.
+The client is meant to only sent message back to one server and maintains it's health
+by echoing the periodic heartbeats sent by the server.
+
 options : {
 	moduleID: {string} ID of the module this client represents
 	port: {string} port we are trying to connect to
@@ -44,6 +48,7 @@ mutil.inherits(JSocketClient, mevents.EventEmitter);
 
 
 // Every JSocketClient has a socket it uses to transfer data to the server
+// Initialize the socket and set up a listener for it to act on its events
 JSocketClient.prototype.connectSocket = function() {
 
 	var socket = new mnet.Socket({

@@ -7,7 +7,12 @@ var mutil = require("util");
 var mevents = require("events");
 var mjSocket = require("./jSocket");
 
+
 /*
+This class was designed to easily set up a relation between two sockets, Server and Client.
+The server manages a pool of connected clients and maintains their health with periodic
+heartbeats.
+
 options : {
 	port: {string} Port to listen on
 }
@@ -41,9 +46,8 @@ mutil.inherits(JSocketServer, mevents.EventEmitter);
 JSocketServer.maxConnections = 10000;
 JSocketServer.pingInterval = 3000;
 
-
-
-
+// Creates the net server and starts listening on the informations provided in options
+// options.port {number} port to listen on for incomming socket connections
 JSocketServer.prototype.initServer = function( options, callback ) {
 	// Hook up raw tcp server
 	var jSocketServer = this;
@@ -52,7 +56,7 @@ JSocketServer.prototype.initServer = function( options, callback ) {
 	});
 
 	server.listen(options.port, function() {
-		console.log("Socket Server is bound");
+		console.log("Socket Server is listening on port: ", options.port);
 	})
 
 	this.serverListener( server );
@@ -98,11 +102,12 @@ JSocketServer.prototype.handleSocket = function( socket, callback ) {
 	callback( undefined, jSocket );
 }
 
+// Creates the JSocket from a raw net socket and adds it to the pool under 
+// an open index.
 JSocketServer.prototype.createSocket = function( socket ) {
 	var jSocket;
 	for( var i = 0; i < JSocketServer.maxConnections; i++ ) {
 		if( typeof(this.socketPool[i]) == "undefined" ) {
-			console.log("New Socket: ",i);
 			jSocket = new mjSocket(socket, i);
 			this.socketPool[i] = jSocket;
 			break;
@@ -114,7 +119,7 @@ JSocketServer.prototype.createSocket = function( socket ) {
 JSocketServer.prototype.mapSocket = function( jSocket, moduleID ) {
 	if( typeof(this.socketMap[moduleID]) != "undefined" ) {
 		if(this.socketMap[moduleID] != jSocket.socketID) {
-			console.log("Inconsitent Socket Mapping");
+			console.log("Warning: Inconsitent Socket Mapping");
 		}
 		return;	
 	} 
