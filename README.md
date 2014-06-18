@@ -4,7 +4,7 @@ jSocket
 Socket implemented with node's net module
 
 
-var jSocket = require("jSocket");
+	var jSocket = require("jSocket");
 
 
 
